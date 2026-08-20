@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /blog/editor
+
+Sitemap: https://www.3ks2u.com/sitemap.xml

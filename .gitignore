@@ -1,0 +1,33 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# 所有以 . 开头的目录（IDE / 工具 / 本地凭据等，一律不提交）
+.*/
+
+# IDE 工程文件
+*.iml
+
+# 构建产物
+backend/**/target/
+frontend/node_modules/
+frontend/dist/
+
+# 运行时数据（用户内容，不入库）
+book/
+uploads/
+blog/
+
+# 密钥与本地环境变量
+.env
+.env.*
+!.env.example
+application-local.yml
+
+# 内部凭据/计划文档（不适合公开仓库）
+docs/远程服务器服务清单-20260528.md
+docs/superpowers/
+
+# 日志
+*.log
+logs/

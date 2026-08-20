@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dataagg-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: data_aggregate
+      MYSQL_USER: dataagg
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --max-allowed-packet=16M
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    networks:
+      - dataagg-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: dataagg-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - dataagg-network
+
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.1.4
+    container_name: dataagg-rocketmq-namesrv
+    restart: unless-stopped
+    ports:
+      - "9876:9876"
+    volumes:
+      - rocketmq_namesrv_logs:/home/rocketmq/logs
+    command: sh mqnamesrv
+    networks:
+      - dataagg-network
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.1.4
+    container_name: dataagg-rocketmq-broker
+    restart: unless-stopped
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+      - "10912:10912"
+    volumes:
+      - rocketmq_broker_logs:/home/rocketmq/logs
+      - rocketmq_broker_store:/home/rocketmq/store
+      - ./docker/rocketmq/broker.conf:/home/rocketmq/rocketmq-5.1.4/conf/broker.conf
+    command: sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/rocketmq-5.1.4/conf/broker.conf
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - dataagg-network
+
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:1.0.0
+    container_name: dataagg-rocketmq-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      JAVA_OPTS: "-Drocketmq.namesrv.addr=rocketmq-namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false"
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - dataagg-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  rocketmq_namesrv_logs:
+  rocketmq_broker_logs:
+  rocketmq_broker_store:
+
+networks:
+  dataagg-network:
+    driver: bridge

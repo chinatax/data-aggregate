@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dataagg-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: data_aggregate
+      MYSQL_USER: dataagg
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --max-allowed-packet=64M
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - dataagg-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: dataagg-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - dataagg-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dataagg-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY}
+      NEWSDATA_TAX_API_KEY: ${NEWSDATA_TAX_API_KEY}
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./book:/app/book
+      - ./blog:/app/blog
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - dataagg-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: dataagg-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./uploads:/opt/host-uploads
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/acme:/var/www/acme
+    depends_on:
+      - backend
+    networks:
+      - dataagg-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  dataagg-network:
+    driver: bridge

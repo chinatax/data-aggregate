@@ -1,0 +1,45 @@
+This is ApacheBench, Version 2.3 <$Revision: 1913912 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking www.3ks2u.com (be patient).....done
+
+
+Server Software:        nginx/1.29.8
+Server Hostname:        www.3ks2u.com
+Server Port:            443
+SSL/TLS Protocol:       TLSv1.2,ECDHE-RSA-AES256-GCM-SHA384,2048,256
+Server Temp Key:        ECDH X25519 253 bits
+TLS Server Name:        www.3ks2u.com
+
+Document Path:          /health
+Document Length:        8163 bytes
+
+Concurrency Level:      10
+Time taken for tests:   8.804 seconds
+Complete requests:      300
+Failed requests:        0
+Total transferred:      2532000 bytes
+HTML transferred:       2448900 bytes
+Requests per second:    34.08 [#/sec] (mean)
+Time per request:       293.457 [ms] (mean)
+Time per request:       29.346 [ms] (mean, across all concurrent requests)
+Transfer rate:          280.87 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:       56   95  56.3     77     402
+Processing:    17  188 182.7    113    1073
+Waiting:       17  182 183.0    108    1047
+Total:         75  282 188.2    217    1148
+
+Percentage of the requests served within a certain time (ms)
+  50%    217
+  66%    378
+  75%    412
+  80%    446
+  90%    531
+  95%    643
+  98%    764
+  99%    855
+ 100%   1148 (longest request)

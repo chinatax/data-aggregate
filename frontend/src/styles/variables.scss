@@ -1,0 +1,53 @@
+// 数据聚合智能应用 - 严格二色：白 + 灰
+// 参考阿里云设计：纯白底、浅灰分隔、深灰文字、极简卡片
+
+// ===== 灰色系 =====
+$gray-50: #FAFAFA;
+$gray-100: #F5F5F5;
+$gray-200: #EEEEEE;
+$gray-300: #E0E0E0;
+$gray-400: #BDBDBD;
+$gray-500: #9E9E9E;
+$gray-600: #757575;
+$gray-700: #616161;
+$gray-800: #424242;
+$gray-900: #212121;
+
+// ===== 白色 =====
+$white: #FFFFFF;
+
+// ===== 背景 =====
+$bg-page: $white;
+$bg-section: $gray-50;
+$bg-hover: $gray-100;
+$bg-active: $gray-200;
+
+// ===== 文字 =====
+$text-main: $gray-900;
+$text-title: $gray-800;
+$text-body: $gray-700;
+$text-sub: $gray-600;
+$text-muted: $gray-500;
+$text-placeholder: $gray-400;
+
+// ===== 边框 =====
+$border: $gray-200;
+$border-light: $gray-100;
+$border-dark: $gray-300;
+
+// ===== 间距 =====
+$gap-xs: 8px;
+$gap-sm: 16px;
+$gap-md: 24px;
+$gap-lg: 32px;
+$gap-xl: 48px;
+$gap-2xl: 64px;
+
+// ===== 圆角 =====
+$radius-sm: 4px;
+$radius: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+
+// ===== 过渡 =====
+$ease: 200ms ease;
