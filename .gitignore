@@ -4,6 +4,8 @@ Thumbs.db
 
 # 所有以 . 开头的目录（IDE / 工具 / 本地凭据等，一律不提交）
 .*/
+# 例外：保留 .github（GitHub Actions 等）
+!.github/
 
 # IDE 工程文件
 *.iml
