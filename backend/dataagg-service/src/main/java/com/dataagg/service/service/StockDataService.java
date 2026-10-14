@@ -810,7 +810,7 @@ public class StockDataService {
         Map<String, Integer> result = new ConcurrentHashMap<>();
         if (codes.isEmpty()) return result;
 
-        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(20);
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(8);
         List<java.util.concurrent.Future<?>> futures = new ArrayList<>();
 
         for (String code : codes) {
@@ -832,43 +832,22 @@ public class StockDataService {
     }
 
     private int calcBoardCountFromKline(String code) {
-        String url = "https://ifzq.gtimg.cn/appstock/app/fqkline/get?param="
-                + marketPrefix(code) + code + ",day,,,30,qfq";
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", "Mozilla/5.0");
-        headers.set("Referer", "https://gu.qq.com/");
-        HttpEntity<?> entity = new HttpEntity<>(headers);
-        ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-        JsonNode root;
-        try {
-            root = objectMapper.readTree(resp.getBody());
-        } catch (Exception e) {
-            return 1;
-        }
-        JsonNode stockData = root.path("data").path(marketPrefix(code) + code);
-        JsonNode days = stockData.path("qfqday");
-        if (!days.isArray() || days.size() < 2) return 1;
-        return calcConsecutiveLimitUps(days);
+        List<StockKlineVO> kline = getKline(code, 30);
+        return calcConsecutiveLimitUps(kline);
     }
 
     /**
      * 从K线日数据（前复权）计算最近连续涨停天数。
-     * 日元素格式: [date, open, close, high, low, volume] — 索引 0,1,2,3,4,5
-     * 当日已通过同花顺确认涨停，这里从倒数第2个开始往旧方向检查。
+     * changePct 为东财提供的涨跌幅（相对前一日收盘），当日已确认涨停，
+     * 从倒数第2个开始往旧方向检查。
      */
-    private int calcConsecutiveLimitUps(JsonNode days) {
+    private int calcConsecutiveLimitUps(List<StockKlineVO> kline) {
         int count = 1; // 当日已确认涨停
+        if (kline.size() < 2) return count;
         // 从倒数第二天开始，往前检查每一日是否涨停
-        for (int i = days.size() - 2; i >= 1; i--) {
-            BigDecimal todayClose = toDecimal(days.get(i).get(2).asText());   // close
-            BigDecimal prevClose = toDecimal(days.get(i - 1).get(2).asText()); // prev close
-            if (todayClose == null || prevClose == null || prevClose.compareTo(BigDecimal.ZERO) == 0) {
-                break;
-            }
-            BigDecimal changePct = todayClose.subtract(prevClose)
-                    .divide(prevClose, 4, RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal("100"));
-            if (changePct.compareTo(new BigDecimal("9.5")) >= 0) {
+        for (int i = kline.size() - 2; i >= 0; i--) {
+            BigDecimal changePct = kline.get(i).getChangePct();
+            if (changePct != null && changePct.compareTo(new BigDecimal("9.5")) >= 0) {
                 count++;
             } else {
                 break;
@@ -988,7 +967,7 @@ public class StockDataService {
         if (!data.isEmpty()) {
             try {
                 String json = objectMapper.writeValueAsString(data);
-                redisTemplate.opsForValue().set(REDIS_KLINE_PREFIX + cacheKey, json, Duration.ofMinutes(5));
+                redisTemplate.opsForValue().set(REDIS_KLINE_PREFIX + cacheKey, json, Duration.ofMinutes(30));
             } catch (Exception e) {
                 log.warn("Write kline L2 failed for {}: {}", code, e.getMessage());
             }
@@ -998,34 +977,27 @@ public class StockDataService {
     }
 
     /**
-     * 从腾讯财经获取个股最近30日K线（前复权），返回完整日K线数据列表。
-     * 日元素格式: [date, open, close, high, low, volume]
+     * 从新浪获取个股最近N日K线（前复权），返回完整日K线数据列表。
+     * 返回 JSON 数组，元素字段: day, open, high, low, close, volume
      */
     private List<StockKlineVO> fetchSingleKlineData(String code, int days) {
         try {
-            String url = "https://ifzq.gtimg.cn/appstock/app/fqkline/get?param="
-                    + marketPrefix(code) + code + ",day,,," + days + ",qfq";
+            String url = "https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData?symbol="
+                    + marketPrefix(code) + code + "&scale=240&ma=no&datalen=" + days;
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "Mozilla/5.0");
-            headers.set("Referer", "https://gu.qq.com/");
             HttpEntity<?> entity = new HttpEntity<>(headers);
             ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
             JsonNode root = objectMapper.readTree(resp.getBody());
-            JsonNode stockData = root.path("data").path(marketPrefix(code) + code);
-            JsonNode daysNode = stockData.path("qfqday");
-            if (!daysNode.isArray() || daysNode.size() == 0) return Collections.emptyList();
+            if (!root.isArray() || root.size() == 0) return Collections.emptyList();
 
             List<StockKlineVO> result = new ArrayList<>();
             BigDecimal prevClose = null;
-            for (int i = 0; i < daysNode.size(); i++) {
-                JsonNode day = daysNode.get(i);
-                if (!day.isArray() || day.size() < 6) continue;
-                String date = day.get(0).asText();
-                BigDecimal open = toDecimal(day.get(1).asText());
-                BigDecimal close = toDecimal(day.get(2).asText());
-                BigDecimal high = toDecimal(day.get(3).asText());
-                BigDecimal low = toDecimal(day.get(4).asText());
-                long volume = day.get(5).asLong(0);
+            for (JsonNode day : root) {
+                BigDecimal open = toDecimal(day.path("open").asText());
+                BigDecimal close = toDecimal(day.path("close").asText());
+                BigDecimal high = toDecimal(day.path("high").asText());
+                BigDecimal low = toDecimal(day.path("low").asText());
 
                 BigDecimal changePct = null;
                 if (prevClose != null && prevClose.compareTo(BigDecimal.ZERO) != 0) {
@@ -1036,12 +1008,12 @@ public class StockDataService {
                 prevClose = close;
 
                 result.add(StockKlineVO.builder()
-                        .date(date)
+                        .date(day.path("day").asText())
                         .open(open)
                         .close(close)
                         .high(high)
                         .low(low)
-                        .volume(volume)
+                        .volume(toDecimal(day.path("volume").asText()).longValue())
                         .changePct(changePct)
                         .build());
             }

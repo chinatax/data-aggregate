@@ -78,7 +78,7 @@ public class StockDataScheduler {
         tracker.register("pollLockupExpiry", "解禁到期", "拉取限售解禁到期数据", "行情数据",
                 "FIXED_DELAY", "1h", () -> stockDataService.fetchAndCacheLockupExpiry());
         tracker.register("pollBoardLadder", "连板天梯", "计算连板天梯排行", "行情数据",
-                "FIXED_DELAY", "2min", () -> stockDataService.fetchAndCacheBoardLadder());
+                "FIXED_DELAY", "10min", () -> stockDataService.fetchAndCacheBoardLadder());
         tracker.register("pollGlobalNews", "全球新闻", "拉取全球财经新闻", "新闻数据",
                 "FIXED_DELAY", "2min", () -> stockDataService.fetchAndCacheGlobalNews());
         tracker.register("pollHolderNum", "筹码集中度", "拉取股东人数变化数据", "行情数据",
@@ -144,7 +144,7 @@ public class StockDataScheduler {
     }
 
     @Scheduled(initialDelayString = "${stock.boardladder.initialDelay:35000}",
-               fixedDelayString = "${stock.boardladder.interval:120000}")
+               fixedDelayString = "${stock.boardladder.interval:600000}")
     public void pollBoardLadder() {
         wrap("pollBoardLadder", () -> stockDataService.fetchAndCacheBoardLadder());
     }
